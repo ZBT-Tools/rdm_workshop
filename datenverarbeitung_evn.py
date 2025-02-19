@@ -39,8 +39,6 @@ for Files in List_of_Filenames:
     df_of_Files.append(pd.read_csv(Files, sep='\t', encoding = "utf-8", decimal=",", dtype=dtype_dic, parse_dates=[0], date_format=Zeitformat))
 df_full_evn = pd.concat(df_of_Files, ignore_index=True)
 
-path_Ordner = "./"
-
 load_dotenv()
 
 mongodb_user = os.environ.get("MONGODB_USER")
@@ -102,7 +100,7 @@ for i in range(len(List_of_Col_Troubleshoot)):
 ax.legend()
 plt.xlabel(df_Troubleshoot.columns[0])
 # Exportiere Graphen als png
-fig.savefig(path_Ordner + 'Troubleshoot_Graph.png')
+fig.savefig('Troubleshoot_Graph.png')
 plt.show()
 
 # Berechnung des Avg - c=alle x Werte / lv=nur letzte x Werte
