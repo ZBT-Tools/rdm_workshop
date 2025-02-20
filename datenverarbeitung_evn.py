@@ -1,12 +1,11 @@
 import pandas as pd
 import os
-from os import listdir
-from os.path import isfile, join
 import math
 import matplotlib.pyplot as plt
 import numpy as np
 from pymongo import MongoClient
 from dotenv import load_dotenv
+import helper_functions as hf
 
 # import & define 'Excel Filter input' Speicherort&Name
 path_Excel = "./filters/Filter_BZ011.xlsx" #spezifisch fürs Testing, muss über Explorer oä auswählbar sein
@@ -17,26 +16,20 @@ df_Excel_Filter_Columns = pd.read_excel(Excel_Filter, 'header')
 df_Excel_Filter_Sets = pd.read_excel(Excel_Filter, 'filter')
 
 # Teststand auswählen
-Teststandsauswahl = ['BZ011', 'BZ016', 'BZ_3Gleiche']
-Teststandsauswahl_chosen = 'BZ011' #spezifisch fürs Testing, muss über Dropdown Menu oä auswählbar sein
-if Teststandsauswahl_chosen == 'BZ_3Gleiche':
-    Col_SetID = 103
-    Zeitformat = "%d.%m.%y %H:%M:%S"
-if Teststandsauswahl_chosen == 'BZ011':
-    Col_SetID = 2
-    Zeitformat = "%d.%m.%y %H:%M:%S"
-if Teststandsauswahl_chosen == 'BZ016':
-    Col_SetID = 127
-    Zeitformat = "%d.%m.%Y %H:%M:%S,%f" #still need to check if this works, I'm confused by a two decimal place "millisecond"?
+testbench_list = ['BZ011', 'BZ016', 'BZ_3Gleiche']
+testbench_name = 'BZ011' #spezifisch fürs Testing, muss über Dropdown Menu oä auswählbar sein
 
-###### Könnte man auch direkt mehrere Daten auswählen indem man einen Ordner auswählt und alle enthaltenen Dateien aneinanderfügt?!
-#Leider haben die Daten vom BZ-Teststand keine Dateiendung und ich kann nicht überprüfen, dass nur die richtigen Daten verwendet werden. Es muss also ein Ordner sein, der nur die Daten vom Teststand enthält.
-path_Ordner = "data/" #spezifisch fürs Testing, muss über Explorer oä auswählbar sein
-List_of_Filenames = [join(path_Ordner, Files) for Files in listdir(path_Ordner)]
+col_set_id, datetime_format = hf.testbench_formats(testbench_name)
+# Könnte man auch direkt mehrere Daten auswählen, indem man einen Ordner
+# auswählt und alle enthaltenen Dateien aneinanderfügt?! Leider haben die
+# Daten vom BZ-Teststand keine Dateiendung und ich kann nicht überprüfen, dass nur die richtigen Daten verwendet werden. Es muss also ein Ordner sein, der nur die Daten vom Teststand enthält.
+folder_path = "data/" #spezifisch fürs Testing, muss über Explorer oä auswählbar sein
+file_names = [os.path.join(folder_path, files)
+              for files in os.listdir(folder_path)]
 df_of_Files = []
 dtype_dic = {'Alarme':str, 'Kommentar':str, 'Set Kommentar':str}
-for Files in List_of_Filenames:
-    df_of_Files.append(pd.read_csv(Files, sep='\t', encoding = "utf-8", decimal=",", dtype=dtype_dic, parse_dates=[0], date_format=Zeitformat))
+for Files in file_names:
+    df_of_Files.append(pd.read_csv(Files, sep='\t', encoding = "utf-8", decimal=",", dtype=dtype_dic, parse_dates=[0], date_format=datetime_format))
 df_full_evn = pd.concat(df_of_Files, ignore_index=True)
 
 load_dotenv()
@@ -101,7 +94,7 @@ ax.legend()
 plt.xlabel(df_Troubleshoot.columns[0])
 # Exportiere Graphen als png
 fig.savefig('Troubleshoot_Graph.png')
-plt.show()
+# plt.show()
 
 # Berechnung des Avg - c=alle x Werte / lv=nur letzte x Werte
 df_avg = df_sorted.iloc[:0,:].copy()
@@ -111,14 +104,15 @@ List_Temp = list()
 List_avg = list()
 for row_Daten_SetID in range(len(df_sorted)):
     for row_Filter in range(len(df_Excel_Filter_Sets)):
-        if df_sorted.iloc[row_Daten_SetID, Col_SetID] == df_Excel_Filter_Sets.iloc[row_Filter, 0]:
+        current_col_set_id = df_sorted.iloc[row_Daten_SetID, col_set_id]
+        if df_sorted.iloc[row_Daten_SetID, col_set_id] == df_Excel_Filter_Sets.iloc[row_Filter, 0]:
             NAvg = df_Excel_Filter_Sets.iloc[row_Filter, 1]
             # cyclic: alle NAvg Werte wird der Mittelwert berechnet
             if df_Excel_Filter_Sets.iloc[row_Filter, 2] == 'c':
                 if row_Daten_SetID > Temp_LastRow_Alt:
                     LastRow = row_Daten_SetID+NAvg-1
                     if LastRow < len(df_sorted):
-                        if df_sorted.iloc[row_Daten_SetID, Col_SetID] == df_sorted.iloc[LastRow, Col_SetID]:
+                        if df_sorted.iloc[row_Daten_SetID, col_set_id] == df_sorted.iloc[LastRow, col_set_id]:
                             #liste erstellen mit Werte aus erster row
                             List_Temp = df_sorted.iloc[[row_Daten_SetID]].values.flatten().tolist()
                             for row_Mittelwert in range(row_Daten_SetID+1, LastRow+1):
@@ -138,7 +132,7 @@ for row_Daten_SetID in range(len(df_sorted)):
                 if row_Daten_SetID > Temp_LastRow_Alt:
                     LastRow = row_Daten_SetID+NAvg-1
                     if LastRow+1 < len(df_sorted):
-                        if df_sorted.iloc[LastRow, Col_SetID] != df_sorted.iloc[LastRow + 1, Col_SetID] and df_sorted.iloc[row_Daten_SetID, Col_SetID] == df_sorted.iloc[LastRow, Col_SetID]:
+                        if df_sorted.iloc[LastRow, col_set_id] != df_sorted.iloc[LastRow + 1, col_set_id] and df_sorted.iloc[row_Daten_SetID, col_set_id] == df_sorted.iloc[LastRow, col_set_id]:
                             #gleicher Kram wie oben
                             # liste erstellen mit Werte aus erster row
                             List_Temp = df_sorted.iloc[[row_Daten_SetID]].values.flatten().tolist()
@@ -154,7 +148,7 @@ for row_Daten_SetID in range(len(df_sorted)):
                             # Mittelwerte anhängen
                             List_avg.append(List_Temp)
                             Temp_LastRow_Alt = LastRow
-                    elif LastRow +1 == len(df_sorted) and df_sorted.iloc[row_Daten_SetID, Col_SetID] == df_sorted.iloc[LastRow, Col_SetID]: #properties of len() => lastRow is actual last row of file
+                    elif LastRow +1 == len(df_sorted) and df_sorted.iloc[row_Daten_SetID, col_set_id] == df_sorted.iloc[LastRow, col_set_id]: #properties of len() => lastRow is actual last row of file
                         row_Daten_SetID = LastRow - NAvg + 1
                         #gleicher Kram wie oben
                         # liste erstellen mit Werte aus erster row
