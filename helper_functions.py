@@ -1,6 +1,7 @@
 import pandas as pd
 import numpy as np
 from rich import print
+import pymongo
 
 
 def testbench_formats(name:  str) -> (str, str):
@@ -77,6 +78,88 @@ def determine_processing_parameters(file_path):
         pd.read_excel(xls_file, 'filter').set_index('setID').to_dict('index'))
     return processing_methods
 
+
+def count_continuous_sections(data_frame: pd.DataFrame, column: str,
+                              change_count_name: str = 'change_count'):
+    set_change = data_frame[column].diff().fillna(0)
+    set_change = set_change.astype('int')
+    set_change[set_change != 0] = 1
+    data_frame['change_count'] = set_change.cumsum()
+    return data_frame
+
+
+def add_columns_to_existing_collection(
+        data_frame: pd.DataFrame, mongo_client: pymongo.MongoClient,
+        db_name: str, coll_name: str, datetime_str: str):
+
+    # Convert the dataframe to a dictionary format for MongoDB insertion
+    df_dict = data_frame.to_dict(orient='records')
+    # Insert the dataframe into a new collection for merging (temp collection)
+    db = mongo_client[db_name]
+
+    if "new_data" in db.list_collection_names():
+        db.drop_collection("new_data")
+    # Create temporary time-series collection if it doesn't exist
+    db.create_collection(
+        "new_data",
+        timeseries={
+            "timeField": datetime_str,
+            "metaField": "metadata",
+            "granularity": "seconds"
+        },
+    )
+    db["new_data"].insert_many(df_dict)
+
+    # Perform the merge operation using $lookup
+    pipeline = [
+        {
+            "$lookup": {
+                "from": "new_data",
+                "localField": "_id",
+                "foreignField": "_id",
+                "as": "added_fields"
+            }
+        },
+        {
+            # Flatten the array (removes users with no orders)
+            "$unwind": "$added_fields"
+        },
+        {
+            "$replaceRoot": {
+                "newRoot": {"$mergeObjects": ["$$ROOT", "$added_fields"]}
+            }
+        },
+        {
+            # Remove the redundant merged object
+            "$project": {"added_fields": 0}
+        },
+        {
+            "$merge": {
+                # Save result in new collection
+                "into": "merged_collection",
+                # Update existing documents if IDs match
+                "whenMatched": "merge",
+                # Insert new documents if not present
+                "whenNotMatched": "insert"
+            }
+        }
+    ]
+    db[coll_name].aggregate(pipeline)
+    db.drop_collection("new_data")
+
+def remove_non_numeric_columns(data_frame: pd.DataFrame):
+
+    # Separate numeric and non-numeric columns
+    numeric_columns = (
+        data_frame.select_dtypes(include=np.float64).dropna(axis=1)).columns.tolist()
+    # non_numeric_columns = [name for name in data_frame.columns
+    #                        if name not in numeric_columns]
+    # df_non_numeric = data_frame[non_numeric_columns]
+    df_numeric = data_frame[numeric_columns]
+    return df_numeric
+
+def processing_function(data_frame: pd.DataFrame):
+    pass
 
 
 
