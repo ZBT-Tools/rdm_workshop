@@ -3,8 +3,10 @@ import os
 import math
 import matplotlib.pyplot as plt
 import numpy as np
+from pymongo import errors
 from pymongo import MongoClient
 from dotenv import load_dotenv
+import chardet
 import helper_functions as hf
 from rich import print
 import plotly.express as px
@@ -20,6 +22,13 @@ column_actions = hf.determine_column_actions(processing_control_file)
 testbench_list = ['BZ011', 'BZ016', 'BZ_3Gleiche']
 testbench_name = 'BZ011'
 
+# Configure data names
+set_id_key = 'Set aktuell'
+set_change_key = 'change_count'
+datetime_key = 'Datum'
+method_key = 'Auswertemodus (c: zyklisch / lv: last value)'
+window_key = 'avgN'
+
 col_set_id, datetime_format = hf.testbench_formats(testbench_name)
 
 # Connect to MongoDB database with credentials from separate .env file
@@ -33,24 +42,29 @@ if not all([mongodb_user, mongodb_password, mongodb_ip]):
 # mongo_uri = "mongodb://"+mongodb_user+":"+mongodb_password+"@172.16.134.8
 # :27017/?directConnection=true&authSource=admin"
 # mongo_uri = "mongodb://localhost:27017"
-client = MongoClient(host=mongodb_ip, port=27017, username=mongodb_user,
-                     password=mongodb_password, authSource="admin",
-                     directConnection=True)
+# try:
+#     client = MongoClient(host=mongodb_ip, port=27017, username=mongodb_user,
+#                          password=mongodb_password, authSource="admin",
+#                          directConnection=True)
+#     # Select database and collection
+#     db = client["rdm_workshop"]
+#     collection = db["BZ011_Rohdaten"]
+#     # Fetch all data from MongoDB collection
+#     cursor = collection.find({})  # Empty filter `{}` fetches all documents
+#     # Convert to DataFrame and sort by datetime column
+#     df_full = pd.DataFrame(list(cursor)).sort_values([datetime_key])
+# except (errors.ServerSelectionTimeoutError, errors.ConnectionFailure):
+print('MongoDB server not available. Read data from test file instead.')
+# File path
+file_path = "./data/BZ011_Rohdaten.dat"
+with open(file_path, "rb") as f:
+    result = chardet.detect(f.read(100000))  # Analyze first 100KB
+    detected_encoding = result["encoding"]
+df_full = pd.read_csv(file_path, delimiter="\t", encoding=detected_encoding,
+                 decimal=",")
+df_full['Datum'] = pd.to_datetime(df_full['Datum'], format=datetime_format)
 
-# Select database and collection
-db = client["rdm_workshop"]
-collection = db["BZ011_Rohdaten"]
 
-set_id_key = 'Set aktuell'
-set_change_key = 'change_count'
-datetime_key = 'Datum'
-method_key = 'Auswertemodus (c: zyklisch / lv: last value)'
-window_key = 'avgN'
-
-# Fetch all data from MongoDB collection
-cursor = collection.find({})  # Empty filter `{}` fetches all documents
-# Convert to DataFrame and sort by datetime column
-df_full = pd.DataFrame(list(cursor)).sort_values([datetime_key])
 df_full = hf.count_continuous_sections(df_full, set_id_key, set_change_key)
 
 # Add new data to time-series collection (not working correctly atm)
@@ -115,27 +129,55 @@ for key, value in processing_method_sets.items():
         # df_processed = grouped.rolling(indexer).mean(numeric_only=True).nth(
         #     window_size).dropna()
         df_processed = grouped[process_columns].transform(lambda x: x.rolling(
-            indexer, min_periods=5).mean()).iloc[::window_size].dropna()
+            indexer, min_periods=1).mean()).iloc[::window_size].dropna()
+        new_columns = {col: col + '_averaged' for col in df_processed.columns}
+        df_processed.rename(columns=new_columns, inplace=True)
     elif method == 'lv':
-        df_processed = grouped[process_columns].agg(
-            lambda x: x.tail(window_size).mean())
-        test = df_processed
+        df_processed = grouped[process_columns].transform(
+            lambda x: x.tail(min(window_size, len(x) - 2)).mean())
+        new_column_dict = {col: col + '_averaged' for col in
+                           df_processed.columns}
+        df_processed.rename(columns=new_column_dict, inplace=True)
+        new_columns = df_processed.columns
+        # Group again to only take the last value of each group
+        df_processed = pd.concat(
+            [df_filtered_rows_subset, df_processed], axis=1)
+        df_processed = df_processed.groupby(
+            [set_id_key, set_change_key]).tail(1)
+        df_processed = df_processed[new_columns]
     else:
-        raise ValueError('only "c" and "lv" are accepted as methodds for now.')
-    new_columns = {col: col + '_averaged' for col in df_processed.columns}
-    df_processed.rename(columns=new_columns, inplace=True)
+        raise ValueError('only "c" and "lv" are accepted as methods for now.')
     processed_data_sets.append(df_processed)
 processed_data = pd.concat(processed_data_sets, axis=0)
 data = pd.concat([df_full, processed_data], axis=1)
 
 
-fig_2 = go.Figure()
-fig_2.add_trace(go.Scatter(x=data.index, y=data['U1'], mode='lines'))
-fig_2.add_trace(go.Scatter(x=data.index, y=data['U1_averaged'],
-                           mode='markers'))
-fig_2.add_trace(go.Scatter(x=data.index, y=data[set_id_key],
-                           mode='lines'))
+x_values = data[datetime_key]
+columns = [set_id_key, set_change_key, 'U1', 'U1_averaged']
+y_values = [data[i] for i in columns]
 
+modes = ['lines', 'lines', 'lines', 'markers']
+markers = [
+    {'size': 1},
+    {'size': 1},
+    {'size': 1},
+    {'size': 10},
+]
+
+fig_2 = go.Figure()
+for i in range(len(y_values)):
+    fig_2.add_trace(go.Scatter(x=x_values, y=y_values[i], mode=modes[i],
+                               marker=markers[i], name=columns[i]))
+    # fig_2.add_trace(go.Scatter(x=x_values, y=data['U1_averaged'],
+    #                            mode='markers'))
+fig_2.update_layout(
+    font_family="Arial",
+    font_color="black",
+    font_size=14,
+
+)
+fig_2.update_xaxes(title="DateTime")
+fig_2.update_yaxes(title="Value")
 fig_2.show()
 
 
