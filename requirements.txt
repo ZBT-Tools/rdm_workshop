@@ -8,3 +8,4 @@ openpyxl
 chardet
 dotenv
 rich
+nbformat

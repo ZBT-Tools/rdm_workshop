@@ -72,10 +72,10 @@ df_full = hf.count_continuous_sections(df_full, set_id_key, set_change_key)
 # hf.add_columns_to_existing_collection(
 #     df_change_count, client, "rdm_workshop", "BZ011_Rohdaten", "Datum")
 
-# # Plot some control data for plausibility checks
-# fig_1 = px.line(df_full, x='Datum', y=['p_Luft/bar_ein', 'T_Luft_ein',
-#                                        'Set aktuell', 'U1', 'change_count'])
-# fig_1.show()
+# Plot some control data for plausibility checks
+fig_1 = px.line(df_full, x='Datum', y=['p_Luft/bar_ein', 'T_Luft_ein',
+                                       'Set aktuell', 'U1', 'change_count'])
+fig_1.show()
 
 # Processing columns
 process_columns = [name for name, value in column_actions.items() if value == 1]
