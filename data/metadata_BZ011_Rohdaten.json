@@ -1,0 +1,11 @@
+[
+    {
+        "experiment_type": "Accelerated stress test",
+        "testbench": "BZ011",
+        "testbench_location": "Energietechnik Labor Universität Duisburg",
+        "sample": "baltic fuel cell test",
+        "experiment_date": "2024-05-08T13:11:02.000Z",
+        "experiment_title": "12345_HKR_AST_1_1",
+        "elabftw_id": 12345
+    }
+]   
