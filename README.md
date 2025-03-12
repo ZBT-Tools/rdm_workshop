@@ -9,9 +9,9 @@ where you want to clone (copy) this repository into via
 > git clone https://github.com/ZBT-Tools/rdm_workshop.git
 
 Alternatively, you can also direct download the complete repository 
-(however then not integrated into git version control)
+(however then not integrated into git version control):
 
-![grafik](https://github.com/user-attachments/assets/c4f9b990-c9d2-4389-b15c-9405bdfb3c9f)
+<img src="https://github.com/user-attachments/assets/c4f9b990-c9d2-4389-b15c-9405bdfb3c9f" alt="drawing" width="400"/>
 
 The presentations are saved under the folder `presentations`
 
