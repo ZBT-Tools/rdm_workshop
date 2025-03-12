@@ -2,6 +2,9 @@ pandas
 numpy
 matplotlib
 pymongo
-openpyxl
+plotly
+plotly-express
 chardet
 dotenv
+rich
+nbformat
