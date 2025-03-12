@@ -4,7 +4,6 @@ matplotlib
 pymongo
 plotly
 plotly-express
-openpyxl
 chardet
 dotenv
 rich
