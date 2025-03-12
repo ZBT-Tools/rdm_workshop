@@ -20,6 +20,6 @@ Installation of all packages can be performed (with an activated python environm
 from a terminal in the's working directory:
 > pip install -r requirements.txt
 
-The example exercises are located in two separate notebooks:
+The example exercises are located in two separate jupyter notebooks:
 1. for the data upload to MongoDB: `mongodb_upload.ipynb`
 2. for processing the data from MongoDB: `data_processing.ipynb`
