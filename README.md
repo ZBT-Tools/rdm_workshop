@@ -4,7 +4,7 @@ To fully use this repository it is advised to clone it via git
 Therefore you need to install git: https://gitforwindows.org/
 With the installed Git Bash command-line interface tool navigate into the folder, 
 where you want to clone (copy) this repository into via
-> cd 'D:\path\to\your\project' (for Windows)
+> cd 'D:\path\to\your\project' (for Windows)'
 
 > git clone https://github.com/ZBT-Tools/rdm_workshop.git
 
