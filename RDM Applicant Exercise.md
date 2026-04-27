@@ -37,10 +37,10 @@ For this scope, complete the full two-repository workflow described below, inclu
 
 * **First Data Set (Testbench: BZ011):**
   * Raw data: [data/BZ011_Rohdaten.dat](https://github.com/ZBT-Tools/rdm_workshop/blob/exercise/data/BZ011_Rohdaten.dat)
-  * Meta data: [data/metadata_BZ011_Rohdaten.json](https://github.com/ZBT-Tools/rdm_workshop/blob/exercise/data/metadata_BZ011_Rohdaten.json)
+  * Metadata: [data/metadata_BZ011_Rohdaten.json](https://github.com/ZBT-Tools/rdm_workshop/blob/exercise/data/metadata_BZ011_Rohdaten.json)
 * **Second Data Set (Testbench: Greenlight):**
   * Raw data: [data/test_greenlight.csv](https://github.com/ZBT-Tools/rdm_workshop/blob/exercise/data/test_greenlight.csv)
-  * Meta data: Included in raw data CSV.
+  * Metadata: Included in raw data CSV.
 
 ### 2. Implementation and Delivery
 
@@ -76,7 +76,7 @@ Repository 2 is required for the Full Workflow Focus and optional for the Core L
 
 This repository demonstrates how the parsing library is used from a separate analysis workflow.
 
-Required contents:
+Required contents for the Full Workflow Focus. For the Core Library Focus, these contents are optional if Repository 2 is submitted:
 
 * An adapted version of the provided Jupyter Notebook: [mongodb_upload.ipynb](https://github.com/ZBT-Tools/rdm_workshop/blob/exercise/mongodb_upload.ipynb)
 * The notebook must import and use the parsing library from Repository 1.
